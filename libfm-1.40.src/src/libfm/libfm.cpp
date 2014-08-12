@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
 		}
 		cmdline.checkParameters();
 
+    //设置默认值，方法：mcmc α：0.1 维度：k0=use bias, k1=use 1-way interactions, k2=dim of 2-way interactions;
 		if (! cmdline.hasParameter(param_method)) { cmdline.setValue(param_method, "mcmc"); }
 		if (! cmdline.hasParameter(param_init_stdev)) { cmdline.setValue(param_init_stdev, "0.1"); }
 		if (! cmdline.hasParameter(param_dim)) { cmdline.setValue(param_dim, "1,1,8"); }
@@ -311,7 +312,10 @@ int main(int argc, char **argv) {
 
 			}
 		} else {
+      //注意：这里SGD是不允许用分组的正则项的
 			// set the regularization; for standard SGD, groups are not supported
+      //  ’r0,r1,r2’ for SGD and ALS: r0=bias regularization,
+      //  r1=1-way regularization, r2=2-way regularization
 			{ 
 	 			vector<double> reg = cmdline.getDblValues(param_regular);
 				assert((reg.size() == 0) || (reg.size() == 1) || (reg.size() == 3));
