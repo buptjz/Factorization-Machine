@@ -31,7 +31,7 @@ class fm_learn {
 		DataMetaInfo* meta;
 		fm_model* fm;
 		double min_target;
-		double max_target;
+		double max_target;//what's meaning?
 
 		int task; // 0=regression, 1=classification	
 

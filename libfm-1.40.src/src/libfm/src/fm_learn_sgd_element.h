@@ -34,13 +34,15 @@ class fm_learn_sgd_element: public fm_learn_sgd {
 			
 				double iteration_time = getusertime();
 				for (train.data->begin(); !train.data->end(); train.data->next()) {
-					
+
+					//calculate multplier
 					double p = fm->predict(train.data->getRow(), sum, sum_sqr);
 					double mult = 0;
-					if (task == 0) {
-						p = std::min(max_target, p);
-						p = std::max(min_target, p);
-						mult = -(train.target(train.data->getRowIndex())-p);
+					if (task == 0) {//regression task
+					//look carefully how to calculate the deriavative of theta
+						p = std::min(max_target, p);//promise within in the range
+						p = std::max(min_target, p);//promise within in the range
+						mult = -(train.target(train.data->getRowIndex())-p);//mult = -(yi - y_predict)
 					} else if (task == 1) {
 						mult = -train.target(train.data->getRowIndex())*(1.0-1.0/(1.0+exp(-train.target(train.data->getRowIndex())*p)));
 					}				

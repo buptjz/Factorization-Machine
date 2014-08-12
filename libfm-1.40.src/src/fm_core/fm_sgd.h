@@ -18,7 +18,7 @@
 void fm_SGD(fm_model* fm, const double& learn_rate, sparse_row<DATA_FLOAT> &x, const double multiplier, DVector<double> &sum) {
 	if (fm->k0) {
 		double& w0 = fm->w0;
-		w0 -= learn_rate * (multiplier + fm->reg0 * w0);
+		w0 -= learn_rate * (multiplier + fm->reg0 * w0);//x.data[i].value disapear after derivative
 	}
 	if (fm->k1) {
 		for (uint i = 0; i < x.size; i++) {

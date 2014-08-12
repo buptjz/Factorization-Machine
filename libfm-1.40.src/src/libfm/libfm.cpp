@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
 		fml->max_target = train.max_target;
 		fml->min_target = train.min_target;
 		fml->meta = &meta;
-		if (! cmdline.getValue("task").compare("r") ) {
+		if (! cmdline.getValue("task").compare("r") ) {//
 			fml->task = 0;
 		} else if (! cmdline.getValue("task").compare("c") ) {
 			fml->task = 1;
