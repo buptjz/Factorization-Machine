@@ -23,9 +23,9 @@ class fm_model {
 	private:
 		DVector<double> m_sum, m_sum_sqr;
 	public:
-		double w0;
-		DVectorDouble w;
-		DMatrixDouble v;
+		double w0;          //w0
+		DVectorDouble w;    //w1 ~ wp
+		DMatrixDouble v;    //v<1,1> ~ v<p,k>
 
 	public:
 		// the following values should be set:
