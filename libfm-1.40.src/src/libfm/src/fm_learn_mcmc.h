@@ -378,6 +378,7 @@ protected:
         }
     }
     
+    //采样，算法第6~24行
     void draw_all(Data& train) {
         std::ostringstream ss;
         
@@ -387,7 +388,7 @@ protected:
         }
         
         if (fm->k0) {
-            draw_w0(fm->w0, fm->reg0, train);
+            draw_w0(fm->w0, fm->reg0, train);//算法第13行，
         }
         if (fm->k1) {
             uint count_how_many_variables_are_drawn = 0; // to make sure that non-existing ones in the train set are not missed...
@@ -624,7 +625,7 @@ protected:
             assert(! std::isnan(w0));
             return;
         }
-        if (std::isinf(w0)) {
+        if (std::isinf(w0)) {//whether its argument value is an infinity
             inf_cntr_w0++;
             w0 = w0_old;
             assert(! std::isinf(w0_old));
@@ -873,7 +874,10 @@ protected:
             alpha = alpha_0;
             return;
         }
-        double alpha_n = alpha_0 + num_train_total;
+        
+        double alpha_n = alpha_0 + num_train_total;//α0+n
+        
+        //公式35的中后部的一坨 sum(yi - yi_predict)
         double gamma_n = gamma_0;
         for (uint i = 0; i < num_train_total; i++) {
             gamma_n += cache[i].e*cache[i].e;
@@ -1026,7 +1030,7 @@ protected:
         DVector<double>& v_lambda_gamma = cache_for_group_values;
         for (int f = 0; f < fm->num_factor; f++) {
             for (uint g = 0; g < meta->num_attr_groups; g++) {
-                v_lambda_gamma(g) = beta_0 * (v_mu(g,f) - mu_0) * (v_mu(g,f) - mu_0) + gamma_0; 
+                v_lambda_gamma(g) = beta_0 * (v_mu(g,f) - mu_0) * (v_mu(g,f) - mu_0) + gamma_0;
             }
             for (uint i = 0; i < fm->num_attribute; i++) {
                 uint g = meta->attr_group(i);
@@ -1067,10 +1071,10 @@ public:
         empty_data_row.size = 0;
         empty_data_row.data = NULL;
         
-        alpha_0 = 1.0;
-        gamma_0 = 1.0;
-        beta_0 = 1.0;
-        mu_0 = 0.0;
+        alpha_0 = 1.0;//唯一一次赋值的，就只有1.0
+        gamma_0 = 1.0;//唯一一次赋值的，就只有1.0
+        beta_0 = 1.0;//唯一一次赋值的，就只有1.0
+        mu_0 = 0.0;//唯一一次赋值的，就只有1.0
         
         alpha = 1;
         
@@ -1078,7 +1082,7 @@ public:
         
         w_mu.setSize(meta->num_attr_groups);
         w_lambda.setSize(meta->num_attr_groups);
-        w_mu.init(0.0); 
+        w_mu.init(0.0);
         w_lambda.init(0.0);
 		
         v_mu.setSize(meta->num_attr_groups, fm->num_factor);
@@ -1131,11 +1135,11 @@ public:
         
         // init caches data structure
         MemoryLog::getInstance().logNew("e_q_term", sizeof(e_q_term), train.num_cases);
-        cache = new e_q_term[train.num_cases];
+        cache = new e_q_term[train.num_cases];//e_q_term数组，数组包含元素个数是 训练样本的个数
         MemoryLog::getInstance().logNew("e_q_term", sizeof(e_q_term), test.num_cases);
         cache_test = new e_q_term[test.num_cases];
         
-        rel_cache.setSize(train.relation.dim);
+        rel_cache.setSize(train.relation.dim);//rel_cache's dim is  1X?
         for (uint r = 0; r < train.relation.dim; r++) {
             MemoryLog::getInstance().logNew("relation_cache", sizeof(relation_cache), train.relation(r).data->num_cases);
             rel_cache(r) = new relation_cache[train.relation(r).data->num_cases];
@@ -1165,7 +1169,7 @@ public:
     }
     
     
-    virtual void debug() { 
+    virtual void debug() {
         fm_learn::debug();
         std::cout << "do_multilevel=" << do_multilevel << std::endl;
         std::cout << "do_sampling=" << do_sample << std::endl;

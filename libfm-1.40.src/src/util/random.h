@@ -135,6 +135,7 @@ double ran_gamma(double alpha, double beta) {
 	return ran_gamma(alpha) / beta;
 }
 
+//高斯分布随机数发生器
 double ran_gaussian() {
 	// Joseph L. Leva: A fast normal Random number generator
 	double u,v, x, y, Q;

@@ -18,7 +18,9 @@
 typedef unsigned long long int uint64;
 typedef signed long long int int64;
 
-
+/*
+ 将内存的释放之类的都打印出来的辅助函数，目前好像没有用到
+ */
 class MemoryLog {
 	private:
 		uint64 mem_size;
