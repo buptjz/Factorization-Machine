@@ -20,9 +20,9 @@ typedef FM_FLOAT DATA_FLOAT;
 
 class DataMetaInfo {
 public:
-    DVector<uint> attr_group; // attribute_id -> group_id
-    uint num_attr_groups;
-    DVector<uint> num_attr_per_group;
+    DVector<uint> attr_group; // attribute_id -> group_id 表示当前的feature在哪个组
+    uint num_attr_groups;//数组分类多少个组，这些组一般来说是制定w_mu和w_lambda的，没有指定就是1
+    DVector<uint> num_attr_per_group;//num_attr_per_group表示每个组有多少个feature
     uint num_relations;
     
     //初始化函数，默认只有一组，这组的容量是 num_attributes
@@ -71,7 +71,7 @@ public:
         this->has_xt = has_xt;
     }
     
-    LargeSparseMatrix<DATA_FLOAT>* data_t;//data的转置
+    LargeSparseMatrix<DATA_FLOAT>* data_t;//data的转置，【猜测】：每一个column应该代表一个instance，每个row代表一个feature吧，猜测
     LargeSparseMatrix<DATA_FLOAT>* data;//保存所有的feature id和value的值，
     DVector<DATA_FLOAT> target;//保存所有instance的y值
     

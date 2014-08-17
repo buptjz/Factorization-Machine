@@ -24,6 +24,7 @@
 class fm_learn_mcmc_simultaneous : public fm_learn_mcmc {
 protected:
     
+    //实现的父类的学习的 接口
     virtual void _learn(Data& train, Data& test) {
         
         uint num_complete_iter = 0;//请问有什么用？
@@ -115,9 +116,10 @@ protected:
             predict_data_and_write_to_eterms(main_data, main_cache);
             // (prediction of train is not necessary but it increases numerical stability)
             double acc_train = 0.0;
-            double rmse_train = 0.0;
+            double rmse_train = 0.0; // train数据集上的均方误差
             if (task == TASK_REGRESSION) {
                 // evaluate test and store it
+                // 评估测试集，并将 结果保存在 pred_this、pred_sum_all、pred_sum_all_but5中
                 for (uint c = 0; c < test.num_cases; c++) {
                     double p = cache_test[c].e;
                     pred_this(c) = p;
@@ -136,7 +138,7 @@ protected:
                     p = std::max(min_target, p);
                     double err = p - train.target(c);
                     rmse_train += err*err;
-                    cache[c].e = cache[c].e - train.target(c);
+                    cache[c].e = cache[c].e - train.target(c); //这里将e赋值为正确的值， 就是预测误差本身
                 }
                 rmse_train = std::sqrt(rmse_train/train.num_cases);
                 

@@ -67,7 +67,7 @@ public:
     uint inf_cntr_v, inf_cntr_w, inf_cntr_w0, inf_cntr_alpha, inf_cntr_w_mu, inf_cntr_w_lambda, inf_cntr_v_mu, inf_cntr_v_lambda;
     
 protected:
-    DVector<double> cache_for_group_values;
+    DVector<double> cache_for_group_values;//分组的信息，应该是计算w_μ和w_λ的缓存变量
     sparse_row<DATA_FLOAT> empty_data_row; // this is a dummy row for attributes that do not exist in the training data (but in test data)
     
     DVector<double> pred_sum_all;       //维数 = test集 instances 数，初始化为全 0.0，累加的是每个instance 的 e
@@ -395,19 +395,23 @@ protected:
     void draw_all(Data& train) {
         std::ostringstream ss;
         
+        /* (1) 抽样α * 算法第7行，公式35*/
         draw_alpha(alpha, train.num_cases);
         if (log != NULL) {
             log->log("alpha", alpha);
         }
         
+        /* (2) 抽样w0 算法第13行*/
         if (fm->k0) {
             draw_w0(fm->w0, fm->reg0, train);//算法第13行，
         }
+        
+        /* (3) 抽样w1~wp 算法14~16 */
         if (fm->k1) {
             uint count_how_many_variables_are_drawn = 0; // to make sure that non-existing ones in the train set are not missed...
 			
-            draw_w_lambda(fm->w.value);
-            draw_w_mu(fm->w.value);
+            draw_w_lambda(fm->w.value);//算法第9行
+            draw_w_mu(fm->w.value);//算法第10行
             if (log != NULL) {
                 for (uint g = 0; g < meta->num_attr_groups; g++) {
                     ss.str(""); ss << "wmu[" << g << "]"; log->log(ss.str(), w_mu(g));
@@ -415,7 +419,7 @@ protected:
                 }
             }
             
-            // draw the w from their posterior
+            // draw the w from their posterior，算法第15行
             train.data_t->begin();
             uint row_index;
             sparse_row<DATA_FLOAT>* feature_data;
@@ -478,14 +482,22 @@ protected:
             
         }
         
+        /* (4) 抽样v1,1~vp,k */
+        
+        /* 4.1 抽样v1,1~vp,k 这里还没有研究完！*/
         if (fm->num_factor > 0) {
             draw_v_lambda();
             draw_v_mu();
             if (log != NULL) {
                 for (uint g = 0; g < meta->num_attr_groups; g++) {
                     for (int f = 0; f < fm->num_factor; f++) {
-                        ss.str(""); ss << "vmu[" << g << "," << f << "]"; log->log(ss.str(), v_mu(g,f));
-                        ss.str(""); ss << "vlambda[" << g << "," << f << "]"; log->log(ss.str(), v_lambda(g,f));
+                        ss.str("");
+                        ss << "vmu[" << g << "," << f << "]";
+                        log->log(ss.str(), v_mu(g,f));
+                        
+                        ss.str("");
+                        ss << "vlambda[" << g << "," << f << "]";
+                        log->log(ss.str(), v_lambda(g,f));
                     }
                 }
             }
@@ -609,7 +621,10 @@ protected:
     
     
     // Find the optimal value for the global bias (0-way interaction)
-    void draw_w0(double& w0, double& reg, Data& train) {
+    // 注意这里更新了w0之后，马上用新的w0来更新了e！！
+    void draw_w0(double& w0, double& reg, Data& train) {//reg 应该就是reg0
+        //可以近似的认为使用的是公式22，虽然还不是理解的很透彻
+        //更新：看明白了，其实是公式29和30采样的w0_mean和w0_sigma_sqr
         // h = 1
         // h^2 = 1
         // \sum e*h = \sum e
@@ -652,6 +667,9 @@ protected:
     }
     
     // Find the optimal value for the 1-way interaction w
+    //公式
+    //公式29和30采样的w_sigma_sqr和w_mean
+    //注意这里更新了wi之后，马上用新的wi来更新了e！！
     void draw_w(double& w, double& w_mu, double& w_lambda, sparse_row<DATA_FLOAT>& feature_data) {
         double w_sigma_sqr = 0;
         double w_mean = 0;
@@ -882,6 +900,7 @@ protected:
         }
     }
     
+    //按照公式35 采样α，但是后面的 β0 哪里去了，反而用上了γ0？感觉是写错了
     void draw_alpha(double& alpha, uint num_train_total) {
         if (! do_multilevel) {
             alpha = alpha_0;
@@ -890,7 +909,7 @@ protected:
         
         double alpha_n = alpha_0 + num_train_total;//α0+n
         
-        //公式35的中后部的一坨 sum(yi - yi_predict)
+        //公式35 的中后部的一坨 sum(yi - yi_predict)
         double gamma_n = gamma_0;
         for (uint i = 0; i < num_train_total; i++) {
             gamma_n += cache[i].e*cache[i].e;
@@ -915,6 +934,7 @@ protected:
         }
     }
     
+    //按照公式37来采样μπ
     void draw_w_mu(double* w) {
         if (! do_multilevel) {
             w_mu.init(mu_0);
@@ -954,6 +974,7 @@ protected:
         }
     }
     
+    /* 完全按照公式36来采样λπ */
     void draw_w_lambda(double* w) {
         if (! do_multilevel) {
             return;
@@ -961,6 +982,8 @@ protected:
         
         DVector<double>& w_lambda_gamma = cache_for_group_values;
         for (uint g = 0; g < meta->num_attr_groups; g++) {
+            //公式36的右侧部分，γ和β在这里应该是用反了（和论文比较）
+            //γ0(μπ - μ0)2 + βλ（貌似这里就是β0了，不再分组了）
             w_lambda_gamma(g) = beta_0 * (w_mu(g) - mu_0) * (w_mu(g) - mu_0) + gamma_0;
         }
         for (uint i = 0; i < fm->num_attribute; i++) {
@@ -968,7 +991,7 @@ protected:
             w_lambda_gamma(g) += (w[i] - w_mu(g)) * (w[i] - w_mu(g));
         }
         for (uint g = 0; g < meta->num_attr_groups; g++) {
-            double w_lambda_alpha = alpha_0 + meta->num_attr_per_group(g) + 1;
+            double w_lambda_alpha = alpha_0 + meta->num_attr_per_group(g) + 1;//公式36的右侧第一部分 α0+pπ+1
             double w_lambda_old = w_lambda(g);
             if (do_sample) {
                 w_lambda(g) = ran_gamma(w_lambda_alpha / 2.0, w_lambda_gamma(g) / 2.0);
@@ -1091,7 +1114,7 @@ public:
         
         alpha = 1;
         
-        w0_mean_0 = 0.0;
+        w0_mean_0 = 0.0;//唯一一次赋值的，就只有1.0
         
         w_mu.setSize(meta->num_attr_groups);
         w_lambda.setSize(meta->num_attr_groups);//λw的数量和组的数量有关
