@@ -21,7 +21,7 @@
 
 class fm_model {
 	private:
-		DVector<double> m_sum, m_sum_sqr;
+		DVector<double> m_sum, m_sum_sqr; //k维（因子维度）
 	public:
 		double w0;          //w0
 		DVectorDouble w;    //w1 ~ wp
@@ -29,15 +29,15 @@ class fm_model {
 
 	public:
 		// the following values should be set:
-		uint num_attribute;
+		uint num_attribute;//含有的 feature 数量
 		
-		bool k0, k1;
-		int num_factor;
+		bool k0, k1;//是否是使用w0和 是否使用w1~wp
+		int num_factor;//因子的维度
 		
-		double reg0;
-		double regw, regv;
+		double reg0;//图2(b)中的 λ0 的初值
+		double regw, regv;//图2(b)中的 λw 和 λv 的初值
 		
-		double init_stdev;
+		double init_stdev;//初始化的stdev，默认是0.1
 		double init_mean;
 		
 		fm_model();
@@ -75,9 +75,9 @@ void fm_model::debug() {
 void fm_model::init() {
 	w0 = 0;
 	w.setSize(num_attribute);
-	v.setSize(num_factor, num_attribute);
-	w.init(0);
-	v.init(init_mean, init_stdev);
+	v.setSize(num_factor, num_attribute);//v<p,k>
+	w.init(0);//w1~wp = 0 所有w都是0，包括上面的w0
+	v.init(init_mean, init_stdev);//所有v都通过~N(μ，σ2)初始化 即ran_gaussian(mean, stdev);
 	m_sum.setSize(num_factor);
 	m_sum_sqr.setSize(num_factor);
 }

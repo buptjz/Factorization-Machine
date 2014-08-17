@@ -137,8 +137,8 @@ int main(int argc, char **argv) {
                 if (cmdline.getValue(param_verbosity, 0) > 0) { validation->debug(); }
             }
         }
-
-        /* 1.3 读入relational数据 block structure 
+        
+        /* 1.3 读入relational数据 block structure
          一般不用 ，但是用起来会减少运算时间和存储空间*/
         DVector<RelationData*> relation;
         
@@ -207,19 +207,22 @@ int main(int argc, char **argv) {
         
         meta.num_relations = train.relation.dim;
         
-        // (2) Setup the factorization machine
+        /* (2) Setup the factorization machine */
         fm_model fm;
         
-        fm.num_attribute = num_all_attribute;
+        fm.num_attribute = num_all_attribute;//含有的 feature 数量
         fm.init_stdev = cmdline.getValue(param_init_stdev, 0.1);
         // set the number of dimensions in the factorization
-        {
-            vector<int> dim = cmdline.getIntValues(param_dim);
-            assert(dim.size() == 3);
-            fm.k0 = dim[0] != 0;
-            fm.k1 = dim[1] != 0;
-            fm.num_factor = dim[2];
-        }
+        vector<int> dim = cmdline.getIntValues(param_dim);
+        assert(dim.size() == 3);
+        fm.k0 = dim[0] != 0;
+        fm.k1 = dim[1] != 0;
+        fm.num_factor = dim[2];
+        
+        //初始化,因为这里还不知道是否使用mcmc，是一个通用的初始化
+        //w0 = 0
+        //w1~wp = 0
+        //v<1,1> ~ v<p,k> = ran_gaussian(mean, stdev);
         fm.init();
         
         // (3) Setup the learning method:
@@ -240,10 +243,10 @@ int main(int argc, char **argv) {
             fm.w.init_normal(fm.init_mean, fm.init_stdev);
             fml = new fm_learn_mcmc_simultaneous(); //fm_learn_mcmc_simultaneous inherits from fm_learn_mcmc
             fml->validation = validation;
-            ((fm_learn_mcmc*)fml)->num_iter = cmdline.getValue(param_num_iter, 100);
-            ((fm_learn_mcmc*)fml)->num_eval_cases = cmdline.getValue(param_num_eval_cases, test.num_cases);
+            ((fm_learn_mcmc*)fml)->num_iter = cmdline.getValue(param_num_iter, 100);//默认迭代一百次
+            ((fm_learn_mcmc*)fml)->num_eval_cases = cmdline.getValue(param_num_eval_cases, test.num_cases);//test instances 的数量
             ((fm_learn_mcmc*)fml)->do_sample = cmdline.getValue(param_do_sampling, true);//do sampling
-            ((fm_learn_mcmc*)fml)->do_multilevel = cmdline.getValue(param_do_multilevel, true);//what's this?
+            ((fm_learn_mcmc*)fml)->do_multilevel = cmdline.getValue(param_do_multilevel, true);//what's this?表示的level-2维度，任意两两interaction
         } else {
             throw "unknown method";
         }
@@ -255,6 +258,7 @@ int main(int argc, char **argv) {
             fml->task = 0;
         } else if (! cmdline.getValue("task").compare("c") ) {//classfication
             fml->task = 1;
+            //遍历所有target的值，如果是分类问题，将target < 0.0的设置为1
             for (uint i = 0; i < train.target.dim; i++){
                 if (train.target(i) <= 0.0){
                     train.target(i) = -1.0;
@@ -394,6 +398,7 @@ int main(int argc, char **argv) {
         }
         
         // () learn，MCMC调用的是fm_learn_mcmc.h
+        //如果是mcmc，将使用上文 fml = new fm_learn_mcmc_simultaneous(); //fm_learn_mcmc_simultaneous inherits from fm_learn_mcmc
         fml->learn(train, test);
         
         // () Prediction at the end  (not for mcmc and als)

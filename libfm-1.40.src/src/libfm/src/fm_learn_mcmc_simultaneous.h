@@ -38,7 +38,7 @@ protected:
         main_cache(1) = cache_test;
         
         
-        predict_data_and_write_to_eterms(main_data, main_cache);//预测y，算法的第4行
+        predict_data_and_write_to_eterms(main_data, main_cache);//预测y，算法的第4行，（看起来e暂时性的成为\hat{y}），所以才有下面的cache[c].e = cache[c].e - train.target(c);
         if (task == TASK_REGRESSION) {
             // remove the target from each prediction, because: e(c) := \hat{y}(c) - target(c)
             for (uint c = 0; c < train.num_cases; c++) {

@@ -71,7 +71,7 @@ public:
         this->has_xt = has_xt;
     }
     
-    LargeSparseMatrix<DATA_FLOAT>* data_t;
+    LargeSparseMatrix<DATA_FLOAT>* data_t;//data的转置
     LargeSparseMatrix<DATA_FLOAT>* data;//保存所有的feature id和value的值，
     DVector<DATA_FLOAT> target;//保存所有instance的y值
     
@@ -286,10 +286,14 @@ void Data::load(std::string filename) {
     
 	num_cases = target.dim;
     
-	if (has_xt) {create_data_t();}
+    //如果是MCMC，那么有data_t，就是在这里创建
+	if (has_xt) {
+        create_data_t();
+    }
 }
 
 void Data::create_data_t() {
+    //这里还没有研究data_t的具体结构
 	// for creating transpose data, the data has to be memory-data because we use random access
 	DVector< sparse_row<DATA_FLOAT> >& data = ((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data)->data;
     

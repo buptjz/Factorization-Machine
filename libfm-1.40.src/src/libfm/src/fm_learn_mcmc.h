@@ -45,20 +45,22 @@ protected:
         throw "not supported for MCMC and ALS";
     }
 public:
-    uint num_iter;
-    uint num_eval_cases;
+    uint num_iter;//默认迭代一百次
+    uint num_eval_cases;//目前是test instances 的数量
     
-    double alpha_0, gamma_0, beta_0, mu_0;
+    double mu_0,gamma_0, alpha_0, beta_0; //图2(b)中的μ0 γ0 α0 β0
     double alpha;
     
     double w0_mean_0;
     
+    //图2(b)中的 μw 和 λw  ，默认为0，如果输入有参数，则使用输入参数((fm_learn_mcmc*)fml)->w_lambda.init(fm.regw);
     DVector<double> w_mu, w_lambda;
     
+    //图2(b)中的 μv 和 λv  ，默认为0 ，如果输入有参数，则使用输入参数((fm_learn_mcmc*)fml)->v_lambda.init(fm.regv);
     DMatrix<double> v_mu, v_lambda;
     
     
-    bool do_sample; // switch between choosing expected values and drawing from distribution
+    bool do_sample; // switch between choosing expected values and drawing from distribution，是否采样，MCMC是采样的
     //seems always true for mcmc
     bool do_multilevel; // use the two-level (hierarchical) model (TRUE) or the one-level (FALSE)
     uint nan_cntr_v, nan_cntr_w, nan_cntr_w0, nan_cntr_alpha, nan_cntr_w_mu, nan_cntr_w_lambda, nan_cntr_v_mu, nan_cntr_v_lambda;
@@ -68,9 +70,9 @@ protected:
     DVector<double> cache_for_group_values;
     sparse_row<DATA_FLOAT> empty_data_row; // this is a dummy row for attributes that do not exist in the training data (but in test data)
     
-    DVector<double> pred_sum_all;
-    DVector<double> pred_sum_all_but5;
-    DVector<double> pred_this;
+    DVector<double> pred_sum_all;       //维数 = test集 instances 数，初始化为全 0.0，累加的是每个instance 的 e
+    DVector<double> pred_sum_all_but5;  //维数 = test集 instances 数，初始化为全 0.0，第五轮之后开始累加
+    DVector<double> pred_this;          //维数 = test集 instances 数，初始化为全 0.0，当前这一轮的e，不累加
     
     e_q_term* cache;
     e_q_term* cache_test;
@@ -82,9 +84,12 @@ protected:
     
     /**
      This function predicts all datasets mentioned in main_data.
-     It stores the prediction in the e-term.
+     It stores the prediction in the e-term.对，证实了我的猜测，将\hat{y}保存在e中
+
+     这里的predict的计算应该是公式（5）
      */
     void predict_data_and_write_to_eterms(DVector<Data*>& main_data, DVector<e_q_term*>& main_cache) {
+        
         
         assert(main_data.dim == main_cache.dim);
         if (main_data.dim == 0) { return ; }
@@ -93,6 +98,8 @@ protected:
         
         // do this using only the transpose copy of the training data:
         for (uint ds = 0; ds < main_cache.dim; ds++) {
+            //只有2维，第一维是train的data和e_q_term数据，第二维是test的data和e_q_term数据
+            //初始化e 和 q 都为0
             e_q_term* m_cache = main_cache(ds);
             Data* m_data = main_data(ds);
             for (uint i = 0; i < m_data->num_cases; i++) {
@@ -107,13 +114,21 @@ protected:
                 rel_cache(r)[c].q = 0.0;
             }
         }
+        /**************************************************************************
+         下面开始了大量的计算，我要看看它到底干了神马
+         (1) do the 1/2 sum_f (sum_i v_if x_i)^2 and store it in the e/y-term （公式5.5 第3项）
+         (2) do -1/2 sum_f (sum_i v_if^2 x_i^2) and store it in the q-term （公式5.5 第4项）
+         (3) add the w's to the q-term，相当于q<c> = sum_j{ x<c>(j) * wj}   （这一步是加上公式5的第二项）
+         (3) merge both for getting the prediction: w0+e(c)+q(c)
+         **************************************************************************/
         
         // (1) do the 1/2 sum_f (sum_i v_if x_i)^2 and store it in the e/y-term
         // (1.1) e_j = 1/2 sum_f (q_jf+ sum_R q^R_jf)^2
         // (1.2) y^R_j = 1/2 sum_f q^R_jf^2
         // Complexity: O(N_z(X^M) + \sum_{B} N_z(X^B) + n*|B| + \sum_B n^B) = O(\mathcal{C})
-        for (int f = 0; f < fm->num_factor; f++) {
-            double* v = fm->v.value[f];
+        for (int f = 0; f < fm->num_factor; f++) {//遍历因子的每一维 f = 1~k
+            
+            double* v = fm->v.value[f];//v是第f维度上每个features的值
             
             // calculate cache[i].q = sum_i v_if x_i (== q_f-term)
             // Complexity: O(N_z(X^M))
@@ -123,7 +138,7 @@ protected:
                 m_data->data_t->begin();
                 uint row_index;
                 sparse_row<DATA_FLOAT>* feature_data;
-                for (uint i = 0; i < m_data->data_t->getNumRows(); i++) {
+                for (uint i = 0; i < m_data->data_t->getNumRows(); i++) {//遍历每一个instance
                     {
                         row_index = m_data->data_t->getRowIndex();
                         feature_data = &(m_data->data_t->getRow());
@@ -251,7 +266,7 @@ protected:
                 m_data->data_t->begin();
                 uint row_index;
                 sparse_row<DATA_FLOAT>* feature_data;
-                for (uint i = 0; i < m_data->data_t->getNumRows(); i++) {
+                for (uint i = 0; i < m_data->data_t->getNumRows(); i++) {//遍历每一个instance ，所以i = 1~N
                     {
                         row_index = m_data->data_t->getRowIndex();
                         feature_data = &(m_data->data_t->getRow());
@@ -259,8 +274,8 @@ protected:
                     }
                     double& w_i = fm->w(row_index);
                     
-                    for (uint i_fd = 0; i_fd < feature_data->size; i_fd++) {
-                        uint& train_case_index = feature_data->data[i_fd].id;
+                    for (uint i_fd = 0; i_fd < feature_data->size; i_fd++) {//遍历每一个feature，所以f = 1~k
+                        uint& train_case_index = feature_data->data[i_fd].id;//获取当前是第几个instance
                         FM_FLOAT& x_li = feature_data->data[i_fd].value;
                         m_cache[train_case_index].q += w_i * x_li;
                     }
@@ -289,6 +304,7 @@ protected:
             
         }
         // (3) merge both for getting the prediction: w0+e(c)+q(c)
+        //注意实际上是e(c) = w0+e(c)+q(c)，同时把q清零了
         for (uint ds = 0; ds < main_cache.dim; ds++) {
             e_q_term* m_cache = main_cache(ds);
             Data* m_data = main_data(ds);
@@ -316,10 +332,7 @@ protected:
         }
         
     }
-public:
-    
-    
-    
+
     
 public:
     virtual void predict(Data& data, DVector<double>& out) {
@@ -1081,12 +1094,12 @@ public:
         w0_mean_0 = 0.0;
         
         w_mu.setSize(meta->num_attr_groups);
-        w_lambda.setSize(meta->num_attr_groups);
+        w_lambda.setSize(meta->num_attr_groups);//λw的数量和组的数量有关
         w_mu.init(0.0);
         w_lambda.init(0.0);
 		
         v_mu.setSize(meta->num_attr_groups, fm->num_factor);
-        v_lambda.setSize(meta->num_attr_groups, fm->num_factor);
+        v_lambda.setSize(meta->num_attr_groups, fm->num_factor);//λw的数量 =  组数量*因子数量
         v_mu.init(0.0);
         v_lambda.init(0.0);
 		
@@ -1139,6 +1152,7 @@ public:
         MemoryLog::getInstance().logNew("e_q_term", sizeof(e_q_term), test.num_cases);
         cache_test = new e_q_term[test.num_cases];
         
+        // relation我们目前还用不到
         rel_cache.setSize(train.relation.dim);//rel_cache's dim is  1X?
         for (uint r = 0; r < train.relation.dim; r++) {
             MemoryLog::getInstance().logNew("relation_cache", sizeof(relation_cache), train.relation(r).data->num_cases);

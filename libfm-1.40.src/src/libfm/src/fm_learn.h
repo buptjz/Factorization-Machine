@@ -30,8 +30,8 @@ class fm_learn {
 	public:
 		DataMetaInfo* meta;
 		fm_model* fm;
-		double min_target;
-		double max_target;//what's meaning?
+		double min_target;//target的最小值
+		double max_target;//target的最大值
 
 		int task; // 0=regression, 1=classification	
 
