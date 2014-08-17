@@ -31,7 +31,7 @@ protected:
         // make a collection of datasets that are predicted jointly
         int num_data = 2;
         DVector<Data*> main_data(num_data);
-        DVector<e_q_term*> main_cache(num_data);
+        DVector<e_q_term*> main_cache(num_data);//存储每一个instance的 e 和 q
         main_data(0) = &train;
         main_data(1) = &test;
         main_cache(0) = cache;

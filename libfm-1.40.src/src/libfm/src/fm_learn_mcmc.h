@@ -1155,6 +1155,7 @@ public:
             }
         }
         
+        //真正的调用simultaneous去学习
         _learn(train, test);
         
         // free data structures

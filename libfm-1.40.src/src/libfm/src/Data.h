@@ -1,11 +1,11 @@
 /*
-	Data container for Factorization Machines 
-
-	Author:   Steffen Rendle, http://www.libfm.org/
-	modified: 2013-07-04
-
-	Copyright 2010-2013 Steffen Rendle, see license.txt for more information
-*/
+ Data container for Factorization Machines
+ 
+ Author:   Steffen Rendle, http://www.libfm.org/
+ modified: 2013-07-04
+ 
+ Copyright 2010-2013 Steffen Rendle, see license.txt for more information
+ */
 
 #ifndef DATA_H_
 #define DATA_H_
@@ -18,99 +18,108 @@
 
 typedef FM_FLOAT DATA_FLOAT;
 
-
-
 class DataMetaInfo {
-	public:
-		DVector<uint> attr_group; // attribute_id -> group_id
-		uint num_attr_groups;
-		DVector<uint> num_attr_per_group;
-		uint num_relations;
-
-		DataMetaInfo(uint num_attributes) {
-			attr_group.setSize(num_attributes);
-			attr_group.init(0);
-			num_attr_groups = 1;
-			num_attr_per_group.setSize(num_attr_groups);
-			num_attr_per_group(0) = num_attributes;
-		}
-		void loadGroupsFromFile(std::string filename) {
-			assert(fileexists(filename));
-			attr_group.load(filename);
-			num_attr_groups = 0;
-			for (uint i = 0; i < attr_group.dim; i++) {
-				num_attr_groups = std::max(num_attr_groups, attr_group(i)+1);
-			}
-			num_attr_per_group.setSize(num_attr_groups);
-			num_attr_per_group.init(0);
-			for (uint i = 0; i < attr_group.dim; i++) {
-				num_attr_per_group(attr_group(i))++;
-			}
-		}
+public:
+    DVector<uint> attr_group; // attribute_id -> group_id
+    uint num_attr_groups;
+    DVector<uint> num_attr_per_group;
+    uint num_relations;
+    
+    //初始化函数，默认只有一组，这组的容量是 num_attributes
+    DataMetaInfo(uint num_attributes) {
+        attr_group.setSize(num_attributes);
+        attr_group.init(0);
+        num_attr_groups = 1;
+        num_attr_per_group.setSize(num_attr_groups);
+        num_attr_per_group(0) = num_attributes;
+    }
+    void loadGroupsFromFile(std::string filename) {
+        assert(fileexists(filename));
+        attr_group.load(filename);
+        num_attr_groups = 0;
+        for (uint i = 0; i < attr_group.dim; i++) {
+            num_attr_groups = std::max(num_attr_groups, attr_group(i)+1);
+        }
+        num_attr_per_group.setSize(num_attr_groups);
+        num_attr_per_group.init(0);
+        for (uint i = 0; i < attr_group.dim; i++) {
+            num_attr_per_group(attr_group(i))++;
+        }
+    }
 	
-		void debug() {
-			std::cout << "#attr=" << attr_group.dim << "\t#groups=" << num_attr_groups << std::endl;
-			for (uint g = 0; g < num_attr_groups; g++) {
-				std::cout << "#attr_in_group[" << g << "]=" << num_attr_per_group(g) << std::endl;
-			}
-		}
+    void debug() {
+        std::cout << "#attr=" << attr_group.dim << "\t#groups=" << num_attr_groups << std::endl;
+        for (uint g = 0; g < num_attr_groups; g++) {
+            std::cout << "#attr_in_group[" << g << "]=" << num_attr_per_group(g) << std::endl;
+        }
+    }
 };
 
 #include "relation.h"
 
 class Data {
-	protected:
-		uint64 cache_size;
-		bool has_xt;
-		bool has_x;
-	public:	
-		Data(uint64 cache_size, bool has_x, bool has_xt) { 
-			this->data_t = NULL;
-			this->data = NULL;
-			this->cache_size = cache_size;
-			this->has_x = has_x;
-			this->has_xt = has_xt;
-		}
-
-		LargeSparseMatrix<DATA_FLOAT>* data_t;
-		LargeSparseMatrix<DATA_FLOAT>* data;
-		DVector<DATA_FLOAT> target;
-
-		int num_feature;
-		uint num_cases;
- 
-		DATA_FLOAT min_target;
-		DATA_FLOAT max_target;
-
-		DVector<RelationJoin> relation;
-		
-		void load(std::string filename);	
-		void debug();
-
-		void create_data_t();
+protected:
+    uint64 cache_size;
+    bool has_xt;
+    bool has_x;
+public:
+    Data(uint64 cache_size, bool has_x, bool has_xt) {
+        this->data_t = NULL;
+        this->data = NULL;
+        this->cache_size = cache_size;
+        this->has_x = has_x;
+        this->has_xt = has_xt;
+    }
+    
+    LargeSparseMatrix<DATA_FLOAT>* data_t;
+    LargeSparseMatrix<DATA_FLOAT>* data;//保存所有的feature id和value的值，
+    DVector<DATA_FLOAT> target;//保存所有instance的y值
+    
+    int num_feature;
+    uint num_cases;
+    
+    DATA_FLOAT min_target;
+    DATA_FLOAT max_target;
+    
+    DVector<RelationJoin> relation;
+    
+    void load(std::string filename);
+    void debug();
+    
+    void create_data_t();
 };
 
 void Data::load(std::string filename) {
-
+    
 	std::cout << "has x = " << has_x << std::endl;
 	std::cout << "has xt = " << has_xt << std::endl;
 	assert(has_x || has_xt);
-
+    
 	int load_from = 0;
-	if ((! has_x || fileexists(filename + ".data")) && (! has_xt || fileexists(filename + ".datat")) && fileexists(filename + ".target")) {
+	if ((! has_x || fileexists(filename + ".data")) &&
+        (! has_xt || fileexists(filename + ".datat")) &&
+        fileexists(filename + ".target")) {
+        
 		load_from = 1;
-	} else if ((! has_x || fileexists(filename + ".x")) && (! has_xt || fileexists(filename + ".xt")) && fileexists(filename + ".y")) {
+        
+	} else if ((! has_x || fileexists(filename + ".x")) &&
+               (! has_xt || fileexists(filename + ".xt")) &&
+               fileexists(filename + ".y")) {
+        
 		load_from = 2;
+        
 	}
-
-
+    
+    //如果不是从二进制文件读进来，load_from = 0
 	if (load_from > 0) {
 		uint num_values = 0;
 		uint64 this_cs = cache_size;
-		if (has_xt && has_x) { this_cs /= 2; }
+		if (has_xt && has_x) {
+            this_cs /= 2;
+        }
 		
 		if (load_from == 1) {
-			this->target.loadFromBinaryFile(filename + ".target");
+			this->target.loadFromBinaryFile(filename + ".target");//为什么从二进制文件里面读？
 		} else {
 			this->target.loadFromBinaryFile(filename + ".y");
 		}
@@ -122,7 +131,7 @@ void Data::load(std::string filename) {
 				this->data = new LargeSparseMatrixHD<DATA_FLOAT>(filename + ".x", this_cs);
 			}
 			assert(this->target.dim == this->data->getNumRows());
-			this->num_feature = this->data->getNumCols();	
+			this->num_feature = this->data->getNumCols();
 			num_values = this->data->getNumValues();
 		} else {
 			data = NULL;
@@ -149,20 +158,20 @@ void Data::load(std::string filename) {
 		max_target = -std::numeric_limits<DATA_FLOAT>::max();
 		for (uint i = 0; i < this->target.dim; i++) {
 			min_target = std::min(this->target(i), min_target);
-			max_target = std::max(this->target(i), max_target);				
+			max_target = std::max(this->target(i), max_target);
 		}
 		num_cases = target.dim;
-
+        
 		std::cout << "num_cases=" << this->num_cases << "\tnum_values=" << num_values << "\tnum_features=" << this->num_feature << "\tmin_target=" << min_target << "\tmax_target=" << max_target << std::endl;
 		return;
 	}
-
+    
 	this->data = new LargeSparseMatrixMemory<DATA_FLOAT>();
 	
 	DVector< sparse_row<DATA_FLOAT> >& data = ((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data)->data;
-
-	int num_rows = 0;
-	uint64 num_values = 0;
+    
+	int num_rows = 0;//记录train数据有多少行
+	uint64 num_values = 0;//记录 稀疏的数据 中一共有多少位置有值 （放心，有生之年这个值应该不会溢出）
 	num_feature = 0;
 	bool has_feature = false;
 	min_target = +std::numeric_limits<DATA_FLOAT>::max();
@@ -180,32 +189,38 @@ void Data::load(std::string filename) {
 			std::string line;
 			std::getline(fData, line);
 			const char *pline = line.c_str();
-			while ((*pline == ' ')  || (*pline == 9)) { pline++; } // skip leading spaces
-			if ((*pline == 0)  || (*pline == '#')) { continue; }  // skip empty rows
-			if (sscanf(pline, "%f%n", &_value, &nchar) >=1) {
+			while ((*pline == ' ')  || (*pline == 9)) {// skip leading spaces
+                pline++;
+            }
+			if ((*pline == 0)  || (*pline == '#')) { // skip empty rows
+                continue;
+            }
+            
+            //处理每一行的时候，先读取target，然后读取每一个feature，注意这里只是搜索检查一遍数据，并未真正保存
+			if (sscanf(pline, "%f%n", &_value, &nchar) >=1) {//%n 的含义是返回从该次 XXscanf 调用开始到此读了多少个字节
 				pline += nchar;
 				min_target = std::min(_value, min_target);
-				max_target = std::max(_value, max_target);			
+				max_target = std::max(_value, max_target);
 				num_rows++;
 				while (sscanf(pline, "%d:%f%n", &_feature, &_value, &nchar) >= 2) {
-					pline += nchar;	
-					num_feature = std::max(_feature, num_feature);
+					pline += nchar;
+					num_feature = std::max(_feature, num_feature);//_feature是第x特征的的编号
 					has_feature = true;
-					num_values++;	
+					num_values++;
 				}
 				while ((*pline != 0) && ((*pline == ' ')  || (*pline == 9))) { pline++; } // skip trailing spaces
-				if ((*pline != 0)  && (*pline != '#')) { 
+				if ((*pline != 0)  && (*pline != '#')) {
 					throw "cannot parse line \"" + line + "\" at character " + pline[0];
 				}
 			} else {
 				throw "cannot parse line \"" + line + "\" at character " + pline[0];
 			}
-		} 
+		}
 		fData.close();
-	}	
-
-	if (has_feature) {	
-		num_feature++; // number of feature is bigger (by one) than the largest value
+	}
+    
+	if (has_feature) {
+		num_feature++; // number of feature is bigger (by one) than the largest value，因为从0开始
 	}
 	std::cout << "num_rows=" << num_rows << "\tnum_values=" << num_values << "\tnum_features=" << num_feature << "\tmin_target=" << min_target << "\tmax_target=" << max_target << std::endl;
 	data.setSize(num_rows);
@@ -213,73 +228,78 @@ void Data::load(std::string filename) {
 	
 	((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data)->num_cols = num_feature;
 	((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data)->num_values = num_values;
-
-	MemoryLog::getInstance().logNew("data_float", sizeof(sparse_entry<DATA_FLOAT>), num_values);			
-	sparse_entry<DATA_FLOAT>* cache = new sparse_entry<DATA_FLOAT>[num_values];
+    
+	MemoryLog::getInstance().logNew("data_float", sizeof(sparse_entry<DATA_FLOAT>), num_values);
+	sparse_entry<DATA_FLOAT>* cache = new sparse_entry<DATA_FLOAT>[num_values];//cache相当于data的缓存，用来读入feature:value数据
 	
 	// (2) read the data
-	{
-		std::ifstream fData(filename.c_str());
-		if (! fData.is_open()) {
-			throw "unable to open " + filename;
-		}
-		int row_id = 0;
-		uint64 cache_id = 0;
-		DATA_FLOAT _value;
-		int nchar, _feature;
-		while (!fData.eof()) {
-			std::string line;
-			std::getline(fData, line);
-			const char *pline = line.c_str();
-			while ((*pline == ' ')  || (*pline == 9)) { pline++; } // skip leading spaces
-			if ((*pline == 0)  || (*pline == '#')) { continue; }  // skip empty rows
-			if (sscanf(pline, "%f%n", &_value, &nchar) >=1) {
-				pline += nchar;
-				assert(row_id < num_rows);
-				target.value[row_id] = _value;
-				data.value[row_id].data = &(cache[cache_id]);
-				data.value[row_id].size = 0;
-			
-				while (sscanf(pline, "%d:%f%n", &_feature, &_value, &nchar) >= 2) {
-					pline += nchar;	
-					assert(cache_id < num_values);
-					cache[cache_id].id = _feature;
-					cache[cache_id].value = _value;
-					cache_id++;
-					data.value[row_id].size++;
-				}
-				row_id++;
-
-				while ((*pline != 0) && ((*pline == ' ')  || (*pline == 9))) { pline++; } // skip trailing spaces
-				if ((*pline != 0)  && (*pline != '#')) { 
-					throw "cannot parse line \"" + line + "\" at character " + pline[0];
-				}
-			} else {
-				throw "cannot parse line \"" + line + "\" at character " + pline[0];
-			}
-		}
-		fData.close();
-		
-		assert(num_rows == row_id);
-		assert(num_values == cache_id);		
-	}	
-
+	
+    std::ifstream fData(filename.c_str());
+    if (! fData.is_open()) {
+        throw "unable to open " + filename;
+    }
+    int row_id = 0;
+    uint64 cache_id = 0;
+    DATA_FLOAT _value;
+    int nchar, _feature;
+    
+    //依次读取每一行
+    while (!fData.eof()) {
+        std::string line;
+        std::getline(fData, line);
+        const char *pline = line.c_str();
+        while ((*pline == ' ')  || (*pline == 9)) { pline++; } // skip leading spaces
+        if ((*pline == 0)  || (*pline == '#')) { continue; }  // skip empty rows
+        if (sscanf(pline, "%f%n", &_value, &nchar) >=1) {
+            pline += nchar;
+            assert(row_id < num_rows);
+            target.value[row_id] = _value;
+            
+            //cache用来缓存读取到data
+            data.value[row_id].data = &(cache[cache_id]);
+            data.value[row_id].size = 0;
+            
+            //依次读取每一个feature_id:value
+            while (sscanf(pline, "%d:%f%n", &_feature, &_value, &nchar) >= 2) {
+                pline += nchar;
+                assert(cache_id < num_values);
+                cache[cache_id].id = _feature;
+                cache[cache_id].value = _value;
+                cache_id++;
+                data.value[row_id].size++;
+            }
+            row_id++;
+            
+            while ((*pline != 0) && ((*pline == ' ')  || (*pline == 9))) { pline++; } // skip trailing spaces
+            if ((*pline != 0)  && (*pline != '#')) {
+                throw "cannot parse line \"" + line + "\" at character " + pline[0];
+            }
+        } else {
+            throw "cannot parse line \"" + line + "\" at character " + pline[0];
+        }
+    }
+    fData.close();
+    
+    assert(num_rows == row_id);
+    assert(num_values == cache_id);
+	
+    
 	num_cases = target.dim;
-
+    
 	if (has_xt) {create_data_t();}
 }
 
 void Data::create_data_t() {
 	// for creating transpose data, the data has to be memory-data because we use random access
 	DVector< sparse_row<DATA_FLOAT> >& data = ((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data)->data;
-
+    
 	data_t = new LargeSparseMatrixMemory<DATA_FLOAT>();
-
+    
 	DVector< sparse_row<DATA_FLOAT> >& data_t = ((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data_t)->data;
-
+    
 	// make transpose copy of training data
 	data_t.setSize(num_feature);
-		
+    
 	// find dimensionality of matrix
 	DVector<uint> num_values_per_column;
 	num_values_per_column.setSize(num_feature);
@@ -290,21 +310,21 @@ void Data::create_data_t() {
 			num_values_per_column(data(i).data[j].id)++;
 			num_values++;
 		}
-	}	
-
-
+	}
+    
+    
 	((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data_t)->num_cols = data.dim;
 	((LargeSparseMatrixMemory<DATA_FLOAT>*)this->data_t)->num_values = num_values;
-
+    
 	// create data structure for values
-	MemoryLog::getInstance().logNew("data_float", sizeof(sparse_entry<DATA_FLOAT>), num_values);			
+	MemoryLog::getInstance().logNew("data_float", sizeof(sparse_entry<DATA_FLOAT>), num_values);
 	sparse_entry<DATA_FLOAT>* cache = new sparse_entry<DATA_FLOAT>[num_values];
 	long long cache_id = 0;
 	for (uint i = 0; i < data_t.dim; i++) {
 		data_t.value[i].data = &(cache[cache_id]);
 		data_t(i).size = num_values_per_column(i);
-		cache_id += num_values_per_column(i);				
-	} 
+		cache_id += num_values_per_column(i);
+	}
 	// write the data into the transpose matrix
 	num_values_per_column.init(0); // num_values per column now contains the pointer on the first empty field
 	for (uint i = 0; i < data.dim; i++) {

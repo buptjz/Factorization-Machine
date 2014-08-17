@@ -97,8 +97,13 @@ int main(int argc, char **argv) {
             }
         }
         
-        // (1) Load the data
+        /* (1) Load the data    */
         std::cout << "Loading train...\t" << std::endl;
+        //初始化、load数据、开启debug
+        //Data(uint64 cache_size, bool has_x, bool has_xt)
+        //如果是mcmc，那么has_x = false,has_xt = true
+        
+        /* 1.1 读入训练数据和test数据   */
         Data train(
                    cmdline.getValue(param_cache_size, 0),
                    ! (!cmdline.getValue(param_method).compare("mcmc")), // no original data for mcmc
@@ -116,6 +121,7 @@ int main(int argc, char **argv) {
         test.load(cmdline.getValue(param_test_file));
         if (cmdline.getValue(param_verbosity, 0) > 0) { test.debug(); }
         
+        /* 1.2 读入validation数据（只用于sgda） */
         Data* validation = NULL;
         if (cmdline.hasParameter(param_val_file)) {
             if (cmdline.getValue(param_method).compare("sgda")) {
@@ -131,31 +137,31 @@ int main(int argc, char **argv) {
                 if (cmdline.getValue(param_verbosity, 0) > 0) { validation->debug(); }
             }
         }
-        
+
+        /* 1.3 读入relational数据 block structure 
+         一般不用 ，但是用起来会减少运算时间和存储空间*/
         DVector<RelationData*> relation;
-        // (1.2) Load relational data
-        {
-            vector<std::string> rel = cmdline.getStrValues(param_relation);
-            
-            std::cout << "#relations: " << rel.size() << std::endl;
-            relation.setSize(rel.size());
-            train.relation.setSize(rel.size());
-            test.relation.setSize(rel.size());
-            for (uint i = 0; i < rel.size(); i++) {
-                relation(i) = new RelationData(
-                                               cmdline.getValue(param_cache_size, 0),
-                                               ! (!cmdline.getValue(param_method).compare("mcmc")), // no original data for mcmc
-                                               ! (!cmdline.getValue(param_method).compare("sgd") || !cmdline.getValue(param_method).compare("sgda")) // no transpose data for sgd, sgda
-                                               );
-                relation(i)->load(rel[i]);
-                train.relation(i).data = relation(i);
-                test.relation(i).data = relation(i);
-                train.relation(i).load(rel[i] + ".train", train.num_cases);
-                test.relation(i).load(rel[i] + ".test", test.num_cases);
-            }
+        
+        vector<std::string> rel = cmdline.getStrValues(param_relation);
+        
+        std::cout << "#relations: " << rel.size() << std::endl;
+        relation.setSize(rel.size());
+        train.relation.setSize(rel.size());
+        test.relation.setSize(rel.size());
+        for (uint i = 0; i < rel.size(); i++) {
+            relation(i) = new RelationData(
+                                           cmdline.getValue(param_cache_size, 0),
+                                           ! (!cmdline.getValue(param_method).compare("mcmc")), // no original data for mcmc
+                                           ! (!cmdline.getValue(param_method).compare("sgd") || !cmdline.getValue(param_method).compare("sgda")) // no transpose data for sgd, sgda
+                                           );
+            relation(i)->load(rel[i]);
+            train.relation(i).data = relation(i);
+            test.relation(i).data = relation(i);
+            train.relation(i).load(rel[i] + ".train", train.num_cases);
+            test.relation(i).load(rel[i] + ".test", test.num_cases);
         }
         
-        // (1.3) Load meta data
+        /* 1.4 读入 Load meta data ，其实就是正则项的group */
         std::cout << "Loading meta data...\t" << std::endl;
         
         // (main table)
@@ -180,7 +186,7 @@ int main(int argc, char **argv) {
             meta.num_attr_groups += relation(r)->meta->num_attr_groups;
         }
         meta.num_attr_per_group.setSize(meta.num_attr_groups);
-        meta.num_attr_per_group.init(0);
+        meta.num_attr_per_group.init(0);//！！初始化为0
         for (uint i = 0; i < meta_main.attr_group.dim; i++) {
             meta.attr_group(i) = meta_main.attr_group(i);
             meta.num_attr_per_group(meta.attr_group(i))++;
@@ -215,8 +221,6 @@ int main(int argc, char **argv) {
             fm.num_factor = dim[2];
         }
         fm.init();
-        
-        
         
         // (3) Setup the learning method:
         fm_learn* fml;
@@ -362,7 +366,7 @@ int main(int argc, char **argv) {
         }
         /*dynamic_cast运算符可以在执行期决定真正的类型。如果downcast是安全的
          （也就说，如果基类指针或者引用确实指向一个派生类对象）
-        这个运算符会传回适当转型过的指针。如果downcast不安全，这个运算符会传回空指针*/
+         这个运算符会传回适当转型过的指针。如果downcast不安全，这个运算符会传回空指针*/
         fm_learn_sgd* fmlsgd= dynamic_cast<fm_learn_sgd*>(fml);
         if (fmlsgd) {
             // set the learning rates (individual per layer)
@@ -389,7 +393,7 @@ int main(int argc, char **argv) {
             fml->debug();
         }
         
-        // () learn
+        // () learn，MCMC调用的是fm_learn_mcmc.h
         fml->learn(train, test);
         
         // () Prediction at the end  (not for mcmc and als)
